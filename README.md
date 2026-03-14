@@ -67,7 +67,7 @@
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/sharmilik/Jiggile.git
+git clone https://github.com/vikramadhithyaThotam22/Jiggile.git
 cd Jiggile/backend
 npm install
 ```
@@ -139,7 +139,7 @@ Jiggile/
 
 ## 📜 License
 
-MIT © [Adwithya](https://github.com/sharmilik)
+MIT © [Adwithya](https://github.com/vikramadhithyaThotam22)
 
 ---
 
