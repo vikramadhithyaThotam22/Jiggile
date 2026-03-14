@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jiggile — Groceries in 10 Minutes | by Adwithya</title>
+    <meta name="description" content="Jiggile delivers fresh groceries to your doorstep in just 10 minutes. Order fruits, vegetables, dairy, snacks and more. Powered by Adwithya.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ============================================ -->
+    <!-- SPLASH / LOADING -->
+    <!-- ============================================ -->
+    <div id="splash-screen" class="splash">
+        <div class="splash-content">
+            <div class="splash-logo">
+                <span class="logo-icon">🛒</span>
+                <h1 class="logo-text">Jiggile</h1>
+            </div>
+            <p class="splash-tagline">Groceries in 10 minutes</p>
+            <div class="splash-loader">
+                <div class="loader-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- OTP LOGIN MODAL -->
+    <!-- ============================================ -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <span class="logo-icon-sm">🛒</span>
+                <h2>Welcome to Jiggile</h2>
+                <p class="modal-sub">Enter your mobile number to get started</p>
+            </div>
+            
+            <!-- Step 1: Phone Number -->
+            <div id="otp-step-phone" class="auth-step">
+                <div class="input-group">
+                    <span class="input-prefix">+91</span>
+                    <input type="tel" id="phone-input" placeholder="Enter 10-digit mobile" 
+                           maxlength="10" pattern="[6-9][0-9]{9}" autocomplete="tel">
+                </div>
+                <button id="send-otp-btn" class="btn btn-primary btn-full" onclick="sendOTP()">
+                    <span class="btn-text">Send OTP</span>
+                    <span class="btn-loader hidden"></span>
+                </button>
+            </div>
+
+            <!-- Step 2: OTP Verification -->
+            <div id="otp-step-verify" class="auth-step hidden">
+                <p class="otp-sent-msg">OTP sent to <span id="otp-phone-display"></span></p>
+                <div class="otp-input-group">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="0">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="1">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="2">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="3">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="4">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="5">
+                </div>
+                <button id="verify-otp-btn" class="btn btn-primary btn-full" onclick="verifyOTP()">
+                    <span class="btn-text">Verify & Login</span>
+                    <span class="btn-loader hidden"></span>
+                </button>
+                <button class="btn-link" onclick="showPhoneStep()">← Change Number</button>
+            </div>
+
+            <div id="auth-error" class="error-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MAIN APP -->
+    <!-- ============================================ -->
+    <div id="app" class="hidden">
+        <!-- TOP NAV -->
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <div class="delivery-info">
+                    <span class="delivery-badge">⚡ 10 MIN</span>
+                    <div class="delivery-loc">
+                        <span class="loc-label">Deliver to</span>
+                        <span class="loc-address" id="user-address" onclick="promptAddress()">Set delivery address ▾</span>
+                    </div>
+                </div>
+            </div>
+            <div class="top-bar-center">
+                <span class="nav-logo">🛒 Jiggile</span>
+            </div>
+            <div class="top-bar-right">
+                <button class="icon-btn" id="nav-orders-btn" onclick="showOrders()">
+                    <span>📦</span>
+                    <span class="icon-label">Orders</span>
+                </button>
+                <button class="icon-btn" id="nav-profile-btn" onclick="showProfile()">
+                    <span>👤</span>
+                    <span class="icon-label" id="user-name-display">Account</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- SEARCH BAR -->
+        <div class="search-section">
+            <div class="search-bar">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" placeholder="Search for groceries..." 
+                       oninput="debounceSearch(this.value)">
+                <button class="search-clear hidden" id="search-clear" onclick="clearSearch()">✕</button>
+            </div>
+        </div>
+
+        <!-- CATEGORY PILLS -->
+        <div class="category-bar" id="category-bar">
+            <button class="cat-pill active" data-cat="all" onclick="filterCategory('all', this)">All</button>
+        </div>
+
+        <!-- PRODUCTS GRID -->
+        <main class="products-section">
+            <div id="products-grid" class="products-grid">
+                <!-- Rendered by JS -->
+            </div>
+            <div id="products-empty" class="empty-state hidden">
+                <span class="empty-icon">🔍</span>
+                <h3>No products found</h3>
+                <p>Try a different search or category</p>
+            </div>
+            <div id="products-loading" class="loading-state">
+                <div class="skeleton-grid">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- CART BOTTOM BAR -->
+        <div id="cart-bar" class="cart-bar hidden" onclick="openCart()">
+            <div class="cart-bar-left">
+                <span class="cart-count" id="cart-count">0</span>
+                <span>items</span>
+                <span class="cart-separator">|</span>
+                <span class="cart-total" id="cart-total">₹0</span>
+            </div>
+            <div class="cart-bar-right">
+                View Cart <span class="arrow-right">→</span>
+            </div>
+        </div>
+
+        <!-- CART DRAWER -->
+        <div id="cart-overlay" class="drawer-overlay hidden" onclick="closeCart()"></div>
+        <div id="cart-drawer" class="drawer hidden">
+            <div class="drawer-header">
+                <h2>🛒 Your Cart</h2>
+                <button class="drawer-close" onclick="closeCart()">✕</button>
+            </div>
+            <div class="drawer-body" id="cart-items">
+                <!-- Rendered by JS -->
+            </div>
+            <div class="drawer-footer">
+                <div class="cart-summary">
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span id="cart-subtotal">₹0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Delivery</span>
+                        <span class="free-badge">FREE</span>
+                    </div>
+                    <div class="summary-row total-row">
+                        <span>Total</span>
+                        <span id="cart-total-final">₹0</span>
+                    </div>
+                </div>
+                <div class="checkout-address">
+                    <input type="text" id="checkout-address" placeholder="Enter delivery address" required>
+                </div>
+                <button class="btn btn-primary btn-full btn-checkout" id="checkout-btn" onclick="placeOrder()">
+                    <span class="btn-text">Place Order</span>
+                    <span class="btn-loader hidden"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ORDERS VIEW -->
+        <div id="orders-view" class="page-view hidden">
+            <div class="page-header">
+                <button class="back-btn" onclick="hideOrders()">← Back</button>
+                <h2>My Orders</h2>
+            </div>
+            <div class="page-body" id="orders-list">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+
+        <!-- ORDER TRACKING VIEW -->
+        <div id="tracking-view" class="page-view hidden">
+            <div class="page-header">
+                <button class="back-btn" onclick="hideTracking()">← Back</button>
+                <h2>Track Order</h2>
+            </div>
+            <div class="tracking-content">
+                <!-- Countdown Timer -->
+                <div class="countdown-container" id="countdown-container">
+                    <div class="countdown-ring">
+                        <svg viewBox="0 0 120 120">
+                            <circle class="countdown-bg" cx="60" cy="60" r="54"/>
+                            <circle class="countdown-progress" id="countdown-circle" cx="60" cy="60" r="54"/>
+                        </svg>
+                        <div class="countdown-text">
+                            <span class="countdown-minutes" id="countdown-min">10</span>
+                            <span class="countdown-label">:</span>
+                            <span class="countdown-seconds" id="countdown-sec">00</span>
+                        </div>
+                    </div>
+                    <p class="countdown-msg" id="countdown-msg">Arriving in</p>
+                </div>
+
+                <!-- Status Steps -->
+                <div class="status-timeline" id="status-timeline">
+                    <div class="status-step" data-status="Approved">
+                        <div class="step-dot"></div>
+                        <div class="step-info">
+                            <span class="step-title">Order Confirmed</span>
+                            <span class="step-time" id="step-approved-time"></span>
+                        </div>
+                    </div>
+                    <div class="status-step" data-status="SentToWarehouse">
+                        <div class="step-dot"></div>
+                        <div class="step-info">
+                            <span class="step-title">Sent to Warehouse</span>
+                            <span class="step-time" id="step-warehouse-time"></span>
+                        </div>
+                    </div>
+                    <div class="status-step" data-status="Packing">
+                        <div class="step-dot"></div>
+                        <div class="step-info">
+                            <span class="step-title">Packing Your Order</span>
+                            <span class="step-time" id="step-packing-time"></span>
+                        </div>
+                    </div>
+                    <div class="status-step" data-status="OutForDelivery">
+                        <div class="step-dot"></div>
+                        <div class="step-info">
+                            <span class="step-title">Out for Delivery</span>
+                            <span class="step-time" id="step-delivery-time"></span>
+                        </div>
+                    </div>
+                    <div class="status-step" data-status="Delivered">
+                        <div class="step-dot"></div>
+                        <div class="step-info">
+                            <span class="step-title">Delivered! 🎉</span>
+                            <span class="step-time" id="step-delivered-time"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GPS Map -->
+                <div class="tracking-map-container">
+                    <div id="tracking-map" class="tracking-map"></div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="tracking-order-info" id="tracking-order-info">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE VIEW -->
+        <div id="profile-view" class="page-view hidden">
+            <div class="page-header">
+                <button class="back-btn" onclick="hideProfile()">← Back</button>
+                <h2>My Account</h2>
+            </div>
+            <div class="page-body profile-body">
+                <div class="profile-card glass-card">
+                    <div class="profile-avatar">👤</div>
+                    <input type="text" id="profile-name" placeholder="Your Name" class="profile-input">
+                    <input type="email" id="profile-email" placeholder="Email (optional)" class="profile-input">
+                    <input type="text" id="profile-address" placeholder="Default Address" class="profile-input">
+                    <button class="btn btn-primary" onclick="updateProfile()">Save Profile</button>
+                </div>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TOAST NOTIFICATIONS -->
+    <!-- ============================================ -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ============================================ -->
+    <!-- FOOTER -->
+    <!-- ============================================ -->
+    <footer class="footer" id="main-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <span class="footer-logo">🛒 Jiggile</span>
+                <p>Groceries delivered in 10 minutes</p>
+            </div>
+            <div class="footer-divider"></div>
+            <div class="footer-parent">
+                <p>A product by <strong>Adwithya</strong></p>
+                <p class="footer-copy">© 2026 Adwithya. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

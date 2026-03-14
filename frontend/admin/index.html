@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jiggile Admin — Sales & Profit Dashboard | Adwithya</title>
+    <meta name="description" content="Jiggile Admin Dashboard - Monitor sales, profits, orders, and stock levels. Managed by Adwithya.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ============================================ -->
+    <!-- LOGIN MODAL -->
+    <!-- ============================================ -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal glass-card">
+            <div class="modal-header">
+                <span class="logo-icon">🛒</span>
+                <h2>Jiggile Admin</h2>
+                <p class="modal-sub">Enter admin/owner credentials</p>
+            </div>
+            <div id="otp-step-phone" class="auth-step">
+                <div class="input-group">
+                    <span class="input-prefix">+91</span>
+                    <input type="tel" id="phone-input" placeholder="Admin mobile" maxlength="10">
+                </div>
+                <button id="send-otp-btn" class="btn btn-primary btn-full" onclick="sendOTP()">
+                    Send OTP
+                </button>
+            </div>
+            <div id="otp-step-verify" class="auth-step hidden">
+                <p class="otp-sent-msg">OTP sent to <span id="otp-phone-display"></span></p>
+                <div class="otp-input-group">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="0">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="1">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="2">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="3">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="4">
+                    <input type="text" class="otp-digit" maxlength="1" data-index="5">
+                </div>
+                <button id="verify-otp-btn" class="btn btn-primary btn-full" onclick="verifyOTP()">
+                    Login to Dashboard
+                </button>
+                <button class="btn-link" onclick="showPhoneStep()">← Change Number</button>
+            </div>
+            <div id="auth-error" class="error-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- DASHBOARD LAYOUT -->
+    <!-- ============================================ -->
+    <div id="dashboard" class="dashboard hidden">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="sidebar-logo">🛒</span>
+                <div>
+                    <h1 class="sidebar-title">Jiggile</h1>
+                    <span class="sidebar-sub">Admin Panel</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-page="overview" onclick="switchPage('overview', this)">
+                    <span class="nav-icon">📊</span>
+                    <span>Overview</span>
+                </button>
+                <button class="nav-item" data-page="orders" onclick="switchPage('orders', this)">
+                    <span class="nav-icon">📦</span>
+                    <span>Orders</span>
+                    <span class="nav-badge" id="pending-badge"></span>
+                </button>
+                <button class="nav-item" data-page="products" onclick="switchPage('products', this)">
+                    <span class="nav-icon">🏷️</span>
+                    <span>Products</span>
+                </button>
+                <button class="nav-item" data-page="alerts" onclick="switchPage('alerts', this)">
+                    <span class="nav-icon">⚠️</span>
+                    <span>Stock Alerts</span>
+                    <span class="nav-badge danger" id="alerts-badge"></span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="admin-info">
+                    <span class="admin-avatar">👤</span>
+                    <div>
+                        <span class="admin-name" id="admin-name">Admin</span>
+                        <span class="admin-role" id="admin-role">Admin</span>
+                    </div>
+                </div>
+                <button class="btn-link" onclick="logout()">Logout</button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- TOP BAR -->
+            <header class="content-header">
+                <div>
+                    <h2 id="page-title">Dashboard Overview</h2>
+                    <p class="header-date" id="header-date"></p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-sm btn-outline" onclick="refreshData()">🔄 Refresh</button>
+                    <span class="role-badge" id="role-badge">Admin</span>
+                </div>
+            </header>
+
+            <!-- ======== OVERVIEW PAGE ======== -->
+            <div id="page-overview" class="page-content">
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card gradient-green">
+                        <div class="kpi-icon">💰</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Today's Revenue</span>
+                            <span class="kpi-value" id="kpi-revenue">₹0</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card gradient-blue">
+                        <div class="kpi-icon">📦</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Today's Orders</span>
+                            <span class="kpi-value" id="kpi-orders">0</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card gradient-purple" id="kpi-profit-card">
+                        <div class="kpi-icon">📈</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Today's Net Profit</span>
+                            <span class="kpi-value" id="kpi-profit">🔒 Owner Only</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card gradient-orange">
+                        <div class="kpi-icon">👥</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Total Customers</span>
+                            <span class="kpi-value" id="kpi-customers">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Status Breakdown -->
+                <div class="status-grid">
+                    <div class="status-card">
+                        <span class="status-dot pending"></span>
+                        <span class="status-label">Pending</span>
+                        <span class="status-count" id="stat-pending">0</span>
+                    </div>
+                    <div class="status-card">
+                        <span class="status-dot processing"></span>
+                        <span class="status-label">Processing</span>
+                        <span class="status-count" id="stat-processing">0</span>
+                    </div>
+                    <div class="status-card">
+                        <span class="status-dot delivery"></span>
+                        <span class="status-label">Out for Delivery</span>
+                        <span class="status-count" id="stat-delivery">0</span>
+                    </div>
+                    <div class="status-card">
+                        <span class="status-dot delivered"></span>
+                        <span class="status-label">Delivered</span>
+                        <span class="status-count" id="stat-delivered">0</span>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <h3>Monthly Revenue & Profit</h3>
+                        <canvas id="monthly-chart"></canvas>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <h3>Order Volume</h3>
+                        <canvas id="orders-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Low Stock Preview -->
+                <div class="section-card glass-card">
+                    <div class="section-header">
+                        <h3>⚠️ Low Stock Alerts</h3>
+                        <button class="btn-link" onclick="switchPage('alerts', document.querySelector('[data-page=alerts]'))">View All →</button>
+                    </div>
+                    <div id="low-stock-preview" class="alerts-list">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======== ORDERS PAGE ======== -->
+            <div id="page-orders" class="page-content hidden">
+                <div class="orders-filters">
+                    <button class="filter-btn active" onclick="filterOrders('all', this)">All</button>
+                    <button class="filter-btn" onclick="filterOrders('Pending', this)">Pending</button>
+                    <button class="filter-btn" onclick="filterOrders('SentToWarehouse', this)">Warehouse</button>
+                    <button class="filter-btn" onclick="filterOrders('Packing', this)">Packing</button>
+                    <button class="filter-btn" onclick="filterOrders('OutForDelivery', this)">Delivery</button>
+                    <button class="filter-btn" onclick="filterOrders('Delivered', this)">Delivered</button>
+                </div>
+                <div class="orders-table-wrap">
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-tbody">
+                            <!-- Rendered by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ======== PRODUCTS PAGE ======== -->
+            <div id="page-products" class="page-content hidden">
+                <div class="orders-table-wrap">
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Cost</th>
+                                <th>Selling</th>
+                                <th>Margin</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-tbody">
+                            <!-- Rendered by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ======== STOCK ALERTS PAGE ======== -->
+            <div id="page-alerts" class="page-content hidden">
+                <div id="alerts-full-list" class="alerts-grid">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="dashboard-footer">
+                <p>🛒 Jiggile Admin Dashboard — A product by <strong>Adwithya</strong></p>
+                <p>© 2026 Adwithya. All rights reserved.</p>
+            </footer>
+        </main>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
